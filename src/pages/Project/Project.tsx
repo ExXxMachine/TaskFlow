@@ -4,6 +4,8 @@ import classesProject from './Project.module.css'
 import IconButton from '@mui/material/IconButton'
 import AddIcon from '@mui/icons-material/Add'
 import { DragDropContext } from 'react-beautiful-dnd'
+import { useLocation } from 'react-router-dom'
+import { Typography, Box } from '@mui/material'
 
 const projectDataTest = [
 	{
@@ -50,6 +52,8 @@ const projectDataTest = [
 ]
 
 const Project = () => {
+	const location = useLocation()
+	const { name, description } = location.state || {}
 	const [projectData, setProjectData] = useState(projectDataTest)
 
 	const addTask = (taskColumnName: string, taskName: string) => {
@@ -154,6 +158,14 @@ const Project = () => {
 
 	return (
 		<DragDropContext onDragEnd={handleDragEnd}>
+			<Box sx={{ mb: 0, pt: 5, pl: 5, color:'#fff' }}>
+				<Typography variant='h4' component='h1' gutterBottom>
+					{name || 'Название проекта'}
+				</Typography>
+				<Typography variant='subtitle1' color='#fff'>
+					{description || 'Описание проекта отсутствует'}
+				</Typography>
+			</Box>
 			<div className={classesProject.projectColumnListBlock}>
 				{projectData.map(item => (
 					<TaskColumn
