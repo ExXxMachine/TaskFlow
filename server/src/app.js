@@ -2,6 +2,7 @@ const express = require('express')
 const pool = require('./config/db')
 const authRouter = require('./routes/authRouter')
 const projectRouter = require('./routes/projectRouter')
+
 const app = express()
 const cors = require('cors')
 const PORT = process.env.PORT || 3000
@@ -11,6 +12,7 @@ app.use(cors())
 
 app.use('/auth', authRouter)
 app.use('/projects', projectRouter)
+
 app.get('/users', async (req, res) => {
 	try {
 		const result = await pool.query('select * from "Users"')

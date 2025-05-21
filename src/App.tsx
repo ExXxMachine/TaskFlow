@@ -12,7 +12,7 @@ function App() {
 			<Routes>
 				<Route path='/' element={<Header />}>
 					<Route path='/' element={<HomePage />} />
-					<Route path='/Project/:id' element={<Project />} />
+					<Route path='/project/:id' element={<Project />} />
 					<Route path='/projects' element={<ProjectsList />} />
 					<Route path='/login' element={<AuthForm isLoginMode={true} />} />
 					<Route path='/register' element={<AuthForm isLoginMode={false} />} />

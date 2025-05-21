@@ -39,9 +39,10 @@ const Header = () => {
 					>
 						TaskFlow
 					</Typography>
-					<Button color='inherit' component={Link} to='/projects'>
+					{!isError ?<Button color='inherit' component={Link} to='/projects'>
 						Мои проекты
-					</Button>
+					</Button> : <></>}
+					
 					{token && userData && !isLoading && !isError ? (
 						<Button color='inherit' onClick={handleLogout}>
 							{userData.user.UserName}

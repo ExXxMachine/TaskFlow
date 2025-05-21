@@ -3,6 +3,7 @@ import { TaskCard } from '../TaskCard/TaskCard'
 import { Paper, Typography, Stack, InputBase } from '@mui/material'
 import IconButton from '@mui/material/IconButton'
 import AddIcon from '@mui/icons-material/Add'
+import { useCreateTaskMutation } from '../../store/slice/projectApi'
 import {
 	Droppable,
 	DroppableProvided,
@@ -12,12 +13,16 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import { Box } from '@mui/material'
 
 interface TaskCardProps {
-	taskId: number
-	taskName: string
+	task_id: number
+	task_column_id: number
+	title: string
+	priority: number
+	executor_id: number | null
+	owner_id: number
 }
 
 interface TaskColumnProps {
-	TaskColumnId: number
+	taskColumnId: number
 	taskColumnName: string
 	taskList: TaskCardProps[]
 	addTask: (taskColumnName: string, taskName: string) => void
@@ -26,7 +31,7 @@ interface TaskColumnProps {
 }
 
 const TaskColumn: React.FC<TaskColumnProps> = ({
-	TaskColumnId,
+	taskColumnId,
 	taskColumnName,
 	taskList,
 	addTask,
@@ -35,6 +40,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 }) => {
 	const [isEditing, setIsEditing] = useState(false)
 	const [nameColumn, setNameColumn] = useState(taskColumnName)
+	const [createTask, { isLoading }] = useCreateTaskMutation()
 
 	const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		setNameColumn(event.target.value)
@@ -46,12 +52,17 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 	const handleDoubleClick = () => {
 		setIsEditing(true)
 	}
-	const handleAddTask = () => {
-		addTask(taskColumnName, 'Новая задача')
+	const handleAddTask = async () => {
+		try {
+			const newTask = await createTask(taskColumnId.toString()).unwrap()
+			addTask(taskColumnId.toString(), newTask.task.title)
+		} catch (error) {
+			console.error('Ошибка при добавлении задачи', error)
+		}
 	}
 
 	const handleDeleteColumn = () => {
-		deleteColumn(TaskColumnId)
+		deleteColumn(taskColumnId)
 	}
 	return (
 		<Paper
@@ -60,7 +71,6 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 				padding: 2,
 				minWidth: 280,
 				maxHeight: '80vh',
-				overflowY: 'auto',
 				display: 'flex',
 				flexDirection: 'column',
 				marginRight: '30px',
@@ -130,20 +140,25 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 				</Box>
 			)}
 
-			<Droppable droppableId={`${TaskColumnId}`}>
+			<Droppable droppableId={`${taskColumnId}`}>
 				{(provided, snapshot) => (
 					<Stack
 						spacing={2}
-						sx={{ flexGrow: 1 }}
+						sx={{
+							flexGrow: 1,
+							height: 'calc(80vh - 100px)',
+							overflowY: 'auto',
+							overflowX: 'hidden',
+						}}
 						ref={provided.innerRef}
 						{...provided.droppableProps}
 					>
 						{taskList.map((item, index) => (
 							<TaskCard
 								deleteTask={deleteTask}
-								key={item.taskId}
-								taskId={item.taskId}
-								taskName={item.taskName}
+								key={item.task_id}
+								task_id={item.task_id}
+								title={item.title}
 								index={index}
 							/>
 						))}

@@ -39,7 +39,9 @@ const ProjectsList: React.FC = () => {
 			setProjectsList(data.projects)
 		}
 	}, [data])
-
+	if (error) {
+		navigate('/login')
+	}
 	useEffect(() => {
 		refetch()
 	}, [location.pathname, refetch])
@@ -48,7 +50,7 @@ const ProjectsList: React.FC = () => {
 		try {
 			const response = await createProject().unwrap()
 			const createdProject = response.project
-			navigate(`/Project/${createdProject.id}`, {
+			navigate(`/project/${createdProject.id}`, {
 				state: {
 					name: createdProject.name,
 					description: createdProject.description,
@@ -116,7 +118,7 @@ const ProjectsList: React.FC = () => {
 				<Grid container spacing={4}>
 					{projectsList.map(({ project_id, name, description }) => (
 						<Link
-							to={`/Project/${project_id}`}
+							to={`/project/${project_id}`}
 							state={{ description: description, name: name }}
 							style={{ textDecoration: 'none' }}
 						>

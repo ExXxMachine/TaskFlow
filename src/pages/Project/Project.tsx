@@ -1,73 +1,79 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { TaskColumn } from '../../widgets/TaskColumn/TaskColumn'
 import classesProject from './Project.module.css'
 import IconButton from '@mui/material/IconButton'
 import AddIcon from '@mui/icons-material/Add'
-import { DragDropContext } from 'react-beautiful-dnd'
+import { DragDropContext, DropResult } from 'react-beautiful-dnd'
 import { useLocation } from 'react-router-dom'
 import { Typography, Box } from '@mui/material'
+import { useParams } from 'react-router-dom'
+import {
+	useGetTaskColumnByProjectIdQuery,
+	useCreateTaskColumnMutation,
+	useDeleteTaskColumnMutation,
+} from '../../store/slice/projectApi'
 
-const projectDataTest = [
-	{
-		TaskColumnId: 1,
-		TaskColumnName: 'Надо выполнить',
-		taskList: [
-			{
-				taskId: 1,
-				taskName: 'name1',
-			},
-			{
-				taskId: 2,
-				taskName: 'name2',
-			},
-			{
-				taskId: 3,
-				taskName: 'name3',
-			},
-		],
-	},
-	{
-		TaskColumnId: 2,
-		TaskColumnName: 'В работе',
-		taskList: [
-			{
-				taskId: 4,
-				taskName: 'name4',
-			},
-			{
-				taskId: 5,
-				taskName: 'name5',
-			},
-			{
-				taskId: 6,
-				taskName: 'name6',
-			},
-		],
-	},
-	{
-		TaskColumnId: 3,
-		TaskColumnName: 'Завершено',
-		taskList: [],
-	},
-]
+interface Task {
+	task_id: number
+	task_column_id: number
+	title: string
+	priority: number
+	executor_id: number | null
+	owner_id: number
+}
+
+interface TaskColumnType {
+	task_column_id: number
+	title: string
+	project_id: number
+	tasks: Task[]
+}
 
 const Project = () => {
 	const location = useLocation()
-	const { name, description } = location.state || {}
-	const [projectData, setProjectData] = useState(projectDataTest)
+	const { id } = useParams()
+	const skip = !id
+	const { data, error, isLoading } = useGetTaskColumnByProjectIdQuery(id!, {
+		skip,
+	})
 
-	const addTask = (taskColumnName: string, taskName: string) => {
+	console.log(data)
+	useEffect(() => {
+		console.log(id)
+	}, [])
+	const { name, description } = location.state || {}
+	const [projectData, setProjectData] = useState<TaskColumnType[]>([])
+
+	const [createColumn] = useCreateTaskColumnMutation()
+	const [deleteTaskColumn] = useDeleteTaskColumnMutation()
+
+	useEffect(() => {
+		if (data?.columns) {
+			setProjectData(data.columns)
+			console.log(projectData)
+		}
+	}, [data])
+
+	const addTask = (taskColumnId: string, taskName: string) => {
 		setProjectData(prevData => {
 			const allTaskIds = prevData.flatMap(col =>
-				col.taskList.map(task => task.taskId)
+				col.tasks.map(task => task.task_id)
 			)
-			const newTaskId = Math.max(...allTaskIds) + 1
-			return prevData.map(column => {
-				if (column.TaskColumnName === taskColumnName) {
-					const newTask = { taskId: newTaskId, taskName }
+			const newTaskId = allTaskIds.length > 0 ? Math.max(...allTaskIds) + 1 : 1
+
+			return prevData.map(column => {	
+				if (column.task_column_id.toString() === taskColumnId) {
+					const newTask: Task = {
+						task_id: newTaskId,
+						task_column_id: column.task_column_id,
+						title: taskName,
+						priority: 0,
+						executor_id: null,
+						owner_id: 0,
+					}
 					return {
 						...column,
-						taskList: [...column.taskList, newTask],
+						tasks: [...column.tasks, newTask],
 					}
 				}
 				return column
@@ -75,20 +81,15 @@ const Project = () => {
 		})
 	}
 
-	const addColumn = () => {
-		setProjectData(prevData => {
-			const allColumnIds = prevData.map(col => col.TaskColumnId)
-			const maxId = allColumnIds.length > 0 ? Math.max(...allColumnIds) : 0
-			const newColumnId = maxId + 1
-
-			const newColumn = {
-				TaskColumnId: newColumnId,
-				TaskColumnName: 'Новая колонка',
-				taskList: [],
-			}
-
-			return [...prevData, newColumn]
-		})
+	const addColumn = async () => {
+		try {
+			if (!id) return
+			const response = await createColumn(id).unwrap()
+			const newColumn = response.taskColumn || response
+			setProjectData(prev => [...prev, { ...newColumn, tasks: [] }])
+		} catch (error) {
+			console.error('Ошибка при создании столбца', error)
+		}
 	}
 
 	const handleDragEnd = (result: DropResult) => {
@@ -105,17 +106,17 @@ const Project = () => {
 			const newData = [...prevData]
 
 			const sourceColumnIndex = newData.findIndex(
-				col => col.TaskColumnId.toString() === source.droppableId
+				col => col.task_column_id.toString() === source.droppableId
 			)
 			const destColumnIndex = newData.findIndex(
-				col => col.TaskColumnId.toString() === destination.droppableId
+				col => col.task_column_id.toString() === destination.droppableId
 			)
 
 			const sourceColumn = newData[sourceColumnIndex]
 			const destColumn = newData[destColumnIndex]
 
-			const sourceTasks = [...sourceColumn.taskList]
-			const destTasks = [...destColumn.taskList]
+			const sourceTasks = [...sourceColumn.tasks]
+			const destTasks = [...destColumn.tasks]
 
 			const [movedTask] = sourceTasks.splice(source.index, 1)
 
@@ -123,17 +124,17 @@ const Project = () => {
 				sourceTasks.splice(destination.index, 0, movedTask)
 				newData[sourceColumnIndex] = {
 					...sourceColumn,
-					taskList: sourceTasks,
+					tasks: sourceTasks,
 				}
 			} else {
 				destTasks.splice(destination.index, 0, movedTask)
 				newData[sourceColumnIndex] = {
 					...sourceColumn,
-					taskList: sourceTasks,
+					tasks: sourceTasks,
 				}
 				newData[destColumnIndex] = {
 					...destColumn,
-					taskList: destTasks,
+					tasks: destTasks,
 				}
 			}
 
@@ -141,24 +142,25 @@ const Project = () => {
 		})
 	}
 
-	const deleteTask = (taskId: number) => {
+	const deleteTask = (task_id: number) => {
 		setProjectData(prevData => {
 			return prevData.map(column => ({
 				...column,
-				taskList: column.taskList.filter(task => task.taskId !== taskId),
+				taskList: column.tasks.filter(task => task.task_id !== task_id),
 			}))
 		})
 	}
 
-	const deleteColumn = (TaskColumnId: number) => {
+	const deleteColumn = async (task_column_id: number) => {
+		await deleteTaskColumn(task_column_id).unwrap()
 		setProjectData(prevData => {
-			return prevData.filter(column => column.TaskColumnId !== TaskColumnId)
+			return prevData.filter(column => column.task_column_id !== task_column_id)
 		})
 	}
 
 	return (
 		<DragDropContext onDragEnd={handleDragEnd}>
-			<Box sx={{ mb: 0, pt: 5, pl: 5, color:'#fff' }}>
+			<Box sx={{ mb: 0, pt: 5, pl: 5, color: '#fff' }}>
 				<Typography variant='h4' component='h1' gutterBottom>
 					{name || 'Название проекта'}
 				</Typography>
@@ -169,10 +171,10 @@ const Project = () => {
 			<div className={classesProject.projectColumnListBlock}>
 				{projectData.map(item => (
 					<TaskColumn
-						key={item.TaskColumnName}
-						TaskColumnId={item.TaskColumnId}
-						taskColumnName={item.TaskColumnName}
-						taskList={item.taskList}
+						key={item.title}
+						taskColumnId={item.task_column_id}
+						taskColumnName={item.title}
+						taskList={item.tasks}
 						addTask={addTask}
 						deleteTask={deleteTask}
 						deleteColumn={deleteColumn}

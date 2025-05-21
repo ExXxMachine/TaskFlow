@@ -10,19 +10,19 @@ import { Draggable } from 'react-beautiful-dnd'
 import DeleteIcon from '@mui/icons-material/Delete'
 
 interface TaskCardProps {
-	taskId: number
-	taskName: string
+	task_id: number
+	title: string
 	index: number
-	deleteTask: (taskId: number) => void
+	deleteTask: (task_id: number) => void
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({
-	taskId,
-	taskName,
+	task_id,
+	title,
 	index,
 	deleteTask,
 }) => {
-	const [name, setName] = useState(taskName)
+	const [name, setName] = useState(title)
 	const [isEditing, setIsEditing] = useState(false)
 
 	const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,11 +38,11 @@ const TaskCard: React.FC<TaskCardProps> = ({
 	}
 
 	const handleDeleteTask = () => {
-		deleteTask(taskId)
+		deleteTask(task_id)
 	}
 
 	return (
-		<Draggable draggableId={taskId.toString()} index={index}>
+		<Draggable draggableId={task_id.toString()} index={index}>
 			{provided => (
 				<Card
 					ref={provided.innerRef}
@@ -52,11 +52,11 @@ const TaskCard: React.FC<TaskCardProps> = ({
 					sx={{
 						cursor: 'pointer',
 						'&:hover': { boxShadow: 6 },
-						// При наведении на карточку показываем кнопку удаления
 						'&:hover .delete-button': {
 							visibility: 'visible',
 							opacity: 1,
 						},
+						minHeight:'90px'
 					}}
 				>
 					<CardContent>
@@ -88,7 +88,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
 								</Typography>
 								<IconButton
 									aria-label='delete task'
-									onClick={handleDeleteTask}
+									onClick={() => deleteTask(task_id)}
 									size='small'
 									className='delete-button'
 									sx={{
@@ -108,7 +108,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
 							color='text.secondary'
 							sx={{ marginTop: 1 }}
 						>
-							ID: {taskId}
+							ID: {task_id}
 						</Typography>
 					</CardContent>
 				</Card>
