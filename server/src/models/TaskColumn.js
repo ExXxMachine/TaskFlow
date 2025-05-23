@@ -49,8 +49,10 @@ const getTaskColumnByProjectId = async project_id => {
 }
 
 
+
 const deleteTaskColumnById = async task_column_id => {
 	try {
+		console.log('task_column_id:', task_column_id)
 		await pool.query(`DELETE FROM "Task" WHERE task_column_id = $1`, [
 			task_column_id,
 		])
@@ -66,9 +68,29 @@ const deleteTaskColumnById = async task_column_id => {
 	}
 }
 
+const updateTaskColumnById = async (task_column_id, title) => {
+	try {
+		const query = `
+      UPDATE "TaskColumn"
+      SET title = $1
+      WHERE task_column_id = $2
+      RETURNING *
+    `
+		const res = await pool.query(query, [title, task_column_id])
+		return { success: true, taskColumn: res.rows[0] }
+	} catch (e) {
+		console.error('Ошибка обновления названия столбца:', e)
+		return { success: false, error: e }
+	}
+}
+
+
+
+
 
 module.exports = {
 	createTaskColumn,
 	getTaskColumnByProjectId,
 	deleteTaskColumnById,
+	updateTaskColumnById,
 }

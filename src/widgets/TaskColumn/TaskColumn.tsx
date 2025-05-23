@@ -1,16 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { TaskCard } from '../TaskCard/TaskCard'
-import { Paper, Typography, Stack, InputBase } from '@mui/material'
+import { Paper, Typography, Stack, InputBase, Box } from '@mui/material'
 import IconButton from '@mui/material/IconButton'
 import AddIcon from '@mui/icons-material/Add'
-import { useCreateTaskMutation } from '../../store/slice/projectApi'
+import {
+	useCreateTaskMutation,
+	useUpdateTaskColumnMutation,
+} from '../../store/slice/projectApi'
 import {
 	Droppable,
-	DroppableProvided,
-	DroppableStateSnapshot,
 } from 'react-beautiful-dnd'
 import DeleteIcon from '@mui/icons-material/Delete'
-import { Box } from '@mui/material'
+import { debounce } from 'lodash'
 
 interface TaskCardProps {
 	task_id: number
@@ -41,10 +42,24 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 	const [isEditing, setIsEditing] = useState(false)
 	const [nameColumn, setNameColumn] = useState(taskColumnName)
 	const [createTask, { isLoading }] = useCreateTaskMutation()
+	const [updateTaskColumn] = useUpdateTaskColumnMutation()
+
+	const debouncedUpdate = useRef(
+		debounce(async (id: number, newName: string) => {
+			try {
+				await updateTaskColumn({ task_column_id: id, title: newName }).unwrap()
+				console.log('Столбец обновлен')
+			} catch (error) {
+				console.error('Ошибка обновления столбца', error)
+			}
+		}, 1000)
+	).current
 
 	const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		setNameColumn(event.target.value)
+		debouncedUpdate(taskColumnId, event.target.value)
 	}
+
 	const handleBlur = () => {
 		setIsEditing(false)
 	}
@@ -63,14 +78,22 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 
 	const handleDeleteColumn = () => {
 		deleteColumn(taskColumnId)
+		console.log(taskColumnId)
 	}
+
+	useEffect(() => {
+		return () => {
+			debouncedUpdate.cancel()
+		}
+	}, [debouncedUpdate])
 	return (
 		<Paper
 			elevation={3}
 			sx={{
 				padding: 2,
 				minWidth: 280,
-				maxHeight: '80vh',
+				maxHeight: '60vh',
+
 				display: 'flex',
 				flexDirection: 'column',
 				marginRight: '30px',

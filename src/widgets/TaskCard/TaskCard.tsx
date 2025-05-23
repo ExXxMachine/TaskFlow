@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import {
 	Card,
 	CardContent,
@@ -8,6 +8,12 @@ import {
 } from '@mui/material'
 import { Draggable } from 'react-beautiful-dnd'
 import DeleteIcon from '@mui/icons-material/Delete'
+import {
+	useDeleteTaskMutation,
+	useUpdateTaskMutation,
+} from '../../store/slice/projectApi'
+import {debounce} from 'lodash'
+
 
 interface TaskCardProps {
 	task_id: number
@@ -24,9 +30,23 @@ const TaskCard: React.FC<TaskCardProps> = ({
 }) => {
 	const [name, setName] = useState(title)
 	const [isEditing, setIsEditing] = useState(false)
+	const [deleteTaskById] = useDeleteTaskMutation()
+  const [updateTask] = useUpdateTaskMutation()
+
+	const debouncedUpdate = useRef(
+		debounce(async (taskId: number, newTitle: string) => {
+			try {
+				await updateTask({ task_id: taskId, title: newTitle }).unwrap()
+			} catch (e) {
+				console.error('Ошибка при обновлении задачи', e)
+			}
+		}, 2000)
+	).current
 
 	const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		setName(event.target.value)
+		const newValue = event.target.value
+		setName(newValue)
+		debouncedUpdate(task_id, newValue)
 	}
 
 	const handleBlur = () => {
@@ -39,7 +59,14 @@ const TaskCard: React.FC<TaskCardProps> = ({
 
 	const handleDeleteTask = () => {
 		deleteTask(task_id)
+		deleteTaskById(task_id)
 	}
+
+	React.useEffect(() => {
+		return () => {
+			debouncedUpdate.cancel()
+		}
+	}, [debouncedUpdate])
 
 	return (
 		<Draggable draggableId={task_id.toString()} index={index}>
@@ -56,7 +83,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
 							visibility: 'visible',
 							opacity: 1,
 						},
-						minHeight:'90px'
+						minHeight: '90px',
 					}}
 				>
 					<CardContent>
@@ -88,7 +115,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
 								</Typography>
 								<IconButton
 									aria-label='delete task'
-									onClick={() => deleteTask(task_id)}
+									onClick={handleDeleteTask}
 									size='small'
 									className='delete-button'
 									sx={{

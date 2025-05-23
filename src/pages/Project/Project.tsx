@@ -1,17 +1,27 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { TaskColumn } from '../../widgets/TaskColumn/TaskColumn'
 import classesProject from './Project.module.css'
-import IconButton from '@mui/material/IconButton'
 import AddIcon from '@mui/icons-material/Add'
 import { DragDropContext, DropResult } from 'react-beautiful-dnd'
-import { useLocation } from 'react-router-dom'
-import { Typography, Box } from '@mui/material'
-import { useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import {
+	Box,
+	TextareaAutosize,
+	InputBase,
+	IconButton,
+	Menu,
+	MenuItem,
+} from '@mui/material'
 import {
 	useGetTaskColumnByProjectIdQuery,
 	useCreateTaskColumnMutation,
 	useDeleteTaskColumnMutation,
+	useDeleteProjectMutation,
+	useUpdateProjectMutation,
+	useUpdateTaskMutation,
 } from '../../store/slice/projectApi'
+import MoreVertIcon from '@mui/icons-material/MoreVert'
+import { debounce } from 'lodash'
 
 interface Task {
 	task_id: number
@@ -37,15 +47,46 @@ const Project = () => {
 		skip,
 	})
 
-	console.log(data)
-	useEffect(() => {
-		console.log(id)
-	}, [])
-	const { name, description } = location.state || {}
+	const navigation = useNavigate()
+	const { name: initialName, description: initialDescription } =
+		location.state || {}
+	const [name, setName] = useState(initialName || '')
+	const [description, setDescription] = useState(initialDescription || '')
+	const [updateProject] = useUpdateProjectMutation()
 	const [projectData, setProjectData] = useState<TaskColumnType[]>([])
+	const [deleteProject] = useDeleteProjectMutation()
+	const [updateTask] = useUpdateTaskMutation()
 
 	const [createColumn] = useCreateTaskColumnMutation()
 	const [deleteTaskColumn] = useDeleteTaskColumnMutation()
+
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+	const open = Boolean(anchorEl)
+
+	const debouncedUpdate = useRef(
+		debounce(async fields => {
+			if (!id) return
+			try {
+				await updateProject({ project_id: id, ...fields }).unwrap()
+				console.log('Проект обновлен', fields)
+			} catch (error) {
+				console.error('Ошибка обновления проекта', error)
+			}
+		}, 2000) 
+	).current
+
+	const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+		setAnchorEl(event.currentTarget)
+	}
+
+	const handleMenuClose = () => {
+		setAnchorEl(null)
+	}
+
+	const handleInviteClick = () => {
+		alert('Пригласить пользователя')
+		handleMenuClose()
+	}
 
 	useEffect(() => {
 		if (data?.columns) {
@@ -54,6 +95,17 @@ const Project = () => {
 		}
 	}, [data])
 
+	const handleDeleteProjectClick = async () => {
+		if (!id) return
+		try {
+			await deleteProject(id).unwrap()
+			handleMenuClose()
+			navigation('/projects')
+		} catch (error) {
+			console.error('Ошибка при удалении проекта:', error)
+		}
+	}
+
 	const addTask = (taskColumnId: string, taskName: string) => {
 		setProjectData(prevData => {
 			const allTaskIds = prevData.flatMap(col =>
@@ -61,7 +113,7 @@ const Project = () => {
 			)
 			const newTaskId = allTaskIds.length > 0 ? Math.max(...allTaskIds) + 1 : 1
 
-			return prevData.map(column => {	
+			return prevData.map(column => {
 				if (column.task_column_id.toString() === taskColumnId) {
 					const newTask: Task = {
 						task_id: newTaskId,
@@ -92,7 +144,7 @@ const Project = () => {
 		}
 	}
 
-	const handleDragEnd = (result: DropResult) => {
+	const handleDragEnd = async (result: DropResult) => {
 		const { source, destination } = result
 		if (!destination) return
 
@@ -127,7 +179,11 @@ const Project = () => {
 					tasks: sourceTasks,
 				}
 			} else {
-				destTasks.splice(destination.index, 0, movedTask)
+				const updatedTask = {
+					...movedTask,
+					task_column_id: destColumn.task_column_id,
+				}
+				destTasks.splice(destination.index, 0, updatedTask)
 				newData[sourceColumnIndex] = {
 					...sourceColumn,
 					tasks: sourceTasks,
@@ -136,19 +192,24 @@ const Project = () => {
 					...destColumn,
 					tasks: destTasks,
 				}
+				updateTask({
+					task_id: movedTask.task_id,
+					task_column_id: destColumn.task_column_id,
+				})
 			}
 
 			return newData
 		})
 	}
+	
 
 	const deleteTask = (task_id: number) => {
-		setProjectData(prevData => {
-			return prevData.map(column => ({
+		setProjectData(prevData =>
+			prevData.map(column => ({
 				...column,
-				taskList: column.tasks.filter(task => task.task_id !== task_id),
+				tasks: column.tasks.filter(task => task.task_id !== task_id),
 			}))
-		})
+		)
 	}
 
 	const deleteColumn = async (task_column_id: number) => {
@@ -157,16 +218,96 @@ const Project = () => {
 			return prevData.filter(column => column.task_column_id !== task_column_id)
 		})
 	}
+	useEffect(() => {
+		if (name.trim() !== '') {
+			debouncedUpdate({ name })
+		}
+	}, [name, debouncedUpdate])
 
+	useEffect(() => {
+		debouncedUpdate({ description })
+	}, [description, debouncedUpdate])
+
+	useEffect(() => {
+		return () => {
+			debouncedUpdate.cancel()
+		}
+	}, [debouncedUpdate])
 	return (
 		<DragDropContext onDragEnd={handleDragEnd}>
-			<Box sx={{ mb: 0, pt: 5, pl: 5, color: '#fff' }}>
-				<Typography variant='h4' component='h1' gutterBottom>
-					{name || 'Название проекта'}
-				</Typography>
-				<Typography variant='subtitle1' color='#fff'>
-					{description || 'Описание проекта отсутствует'}
-				</Typography>
+			<Box sx={{ position: 'relative', pt: 4, pl: 5, color: '#fff' }}>
+				<IconButton
+					aria-label='more'
+					aria-controls={open ? 'project-menu' : undefined}
+					aria-haspopup='true'
+					aria-expanded={open ? 'true' : undefined}
+					onClick={handleMenuOpen}
+					sx={{
+						position: 'absolute',
+						top: 16,
+						right: 16,
+						color: '#fff',
+						zIndex: 10,
+					}}
+				>
+					<MoreVertIcon />
+				</IconButton>
+
+				<InputBase
+					value={name}
+					onChange={e => setName(e.target.value)}
+					sx={{
+						fontSize: '2rem',
+						fontWeight: 'bold',
+						width: '100%',
+						color: '#fff',
+						mb: 1,
+						borderBottom: '1px solid transparent',
+						'&:focus': {
+							borderBottom: '1px solid #fff',
+							outline: 'none',
+						},
+					}}
+					placeholder='Введите название проекта'
+					inputProps={{ maxLength: 100 }}
+				/>
+
+				<TextareaAutosize
+					value={description}
+					onChange={e => setDescription(e.target.value)}
+					placeholder='Введите описание проекта'
+					style={{
+						width: '100%',
+						minHeight: 20,
+						fontSize: '1rem',
+						color: '#fff',
+						backgroundColor: 'transparent',
+						border: 'none',
+						resize: 'vertical',
+						outline: 'none',
+						padding: 0,
+						marginTop: 8,
+					}}
+					maxLength={500}
+				/>
+
+				<Menu
+					id='project-menu'
+					anchorEl={anchorEl}
+					open={open}
+					onClose={handleMenuClose}
+					anchorOrigin={{
+						vertical: 'bottom',
+						horizontal: 'right',
+					}}
+					transformOrigin={{
+						vertical: 'top',
+						horizontal: 'right',
+					}}
+				>
+					<MenuItem onClick={handleInviteClick}>Пригласить</MenuItem>
+					<MenuItem onClick={handleDeleteProjectClick}>Удалить проект</MenuItem>
+				</Menu>
 			</Box>
 			<div className={classesProject.projectColumnListBlock}>
 				{projectData.map(item => (
