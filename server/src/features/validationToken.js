@@ -4,9 +4,7 @@ const User = require('../models/User')
 const jwt = require('jsonwebtoken')
 
 const validationToken = async req => {
-	console.log('JWT secret:', secret)
 	const authHeader = req.headers.authorization
-	console.log('authHeader:', authHeader)
 	if (!authHeader) {
 		throw new Error('Токен не предоставлен')
 	}
@@ -19,7 +17,6 @@ const validationToken = async req => {
 
 	try {
 		const decoded = jwt.verify(tokenPayload, secret)
-		console.log('Decoded token:', decoded)
 		const user = await User.findById(decoded.id)
 		console.log('user:', user)
 		if (!user) {

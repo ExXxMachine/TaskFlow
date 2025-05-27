@@ -21,10 +21,19 @@ class taskController {
 				return res.status(401).json({ success: false, message: error.message })
 			}
 
-			const newTask = await Task.createTask({
+			const newTaskResult = await Task.createTask({
 				taskColumnId,
 				userId,
 			})
+
+			if (!newTaskResult.success) {
+				return res.status(400).json({
+					success: false,
+					message: newTaskResult.message || 'Ошибка при создании задачи',
+				})
+			}
+
+			const newTask = newTaskResult.task
 
 			return res.json({
 				success: true,
@@ -52,15 +61,14 @@ class taskController {
 					errors: errors.array(),
 				})
 			}
-
+			let userId
 			try {
-				const userId = await validationToken(req)
+				userId = await validationToken(req)
 			} catch (error) {
 				return res.status(401).json({ success: false, message: error.message })
 			}
 			const task_id = req.params.id
-			console.log('task_id:', task_id)
-			const result = await Task.deleteTaskById(task_id)
+			const result = await Task.deleteTaskById(task_id, userId)
 
 			if (!result) {
 				return res
@@ -91,8 +99,6 @@ class taskController {
 			const taskId = req.params.id
 			const { title, description, priority, executor_id, task_column_id } =
 				req.body
-			console.log('params:', req.params)
-			console.log('body:', req.body)
 			let userId
 			try {
 				userId = await validationToken(req)
@@ -100,13 +106,17 @@ class taskController {
 				return res.status(401).json({ success: false, message: error.message })
 			}
 
-			const updatedTask = await Task.updateTaskById(taskId, {
-				title,
-				description,
-				priority,
-				executor_id,
-				task_column_id,
-			})
+			const updatedTask = await Task.updateTaskById(
+				taskId,
+				{
+					title,
+					description,
+					priority,
+					executor_id,
+					task_column_id,
+				},
+				userId
+			)
 
 			if (!updatedTask) {
 				return res

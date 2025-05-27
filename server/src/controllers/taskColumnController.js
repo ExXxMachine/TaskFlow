@@ -16,23 +16,23 @@ class taskColumnController {
 
 			const title = 'Новый столбец'
 			const project_id = req.params.id
-
+			let userId
 			try {
-				const userId = await validationToken(req)
+				userId = await validationToken(req)
 			} catch (error) {
 				return res.status(401).json({ success: false, message: error.message })
 			}
-
 			const newTaskColumn = await TaskColumn.createTaskColumn({
 				title,
 				project_id,
+				userId,
 			})
 
 			return res.json({
 				success: true,
 				message: 'Столбец успешно создан',
 				taskColumn: {
-					id: newTaskColumn.task_column_id,
+					task_column_id: newTaskColumn.task_column_id,
 					title: newTaskColumn.title,
 					project_id: newTaskColumn.project_id,
 				},
@@ -54,25 +54,32 @@ class taskColumnController {
 				})
 			}
 
+			let userId
 			try {
-				const userId = await validationToken(req)
+				userId = await validationToken(req)
 			} catch (error) {
 				return res.status(401).json({ success: false, message: error.message })
 			}
 
 			const project_id = req.params.id
 
-			const columns = await TaskColumn.getTaskColumnByProjectId(project_id)
+			const result = await TaskColumn.getTaskColumnByProjectId(
+				project_id,
+				userId
+			)
 
-			if (!columns) {
+			if (!result || !result.success) {
 				return res.status(500).json({
 					success: false,
-					message: 'Ошибка при получении списка столбцов',
+					message: result?.message || 'Ошибка при получении списка столбцов',
 				})
 			}
+
+			// Возвращаем распакованные данные без вложенности
 			return res.json({
 				success: true,
-				columns,
+				role: result.role,
+				columns: result.columns,
 			})
 		} catch (error) {
 			console.error(error)
@@ -90,15 +97,18 @@ class taskColumnController {
 					errors: errors.array(),
 				})
 			}
-
+			let userId
 			try {
-				const userId = await validationToken(req)
+				userId = await validationToken(req)
 			} catch (error) {
 				return res.status(401).json({ success: false, message: error.message })
 			}
 
 			const task_column_id = req.params.id
-			const result = await TaskColumn.deleteTaskColumnById(task_column_id)
+			const result = await TaskColumn.deleteTaskColumnById(
+				task_column_id,
+				userId
+			)
 
 			if (!result) {
 				return res
@@ -140,7 +150,8 @@ class taskColumnController {
 
 			const updatedTaskColumn = await TaskColumn.updateTaskColumnById(
 				task_column_id,
-				title
+				title,
+				userId
 			)
 
 			if (!updatedTaskColumn) {
@@ -153,7 +164,7 @@ class taskColumnController {
 				success: true,
 				message: 'Столбец успешно обновлен',
 				task: {
-					id: updatedTaskColumn.task_column_id,
+					task_column_id: updatedTaskColumn.task_column_id,
 					title: updatedTaskColumn.title,
 				},
 			})

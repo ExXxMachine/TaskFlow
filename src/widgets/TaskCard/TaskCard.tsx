@@ -12,14 +12,14 @@ import {
 	useDeleteTaskMutation,
 	useUpdateTaskMutation,
 } from '../../store/slice/projectApi'
-import {debounce} from 'lodash'
-
+import { debounce } from 'lodash'
 
 interface TaskCardProps {
 	task_id: number
 	title: string
 	index: number
 	deleteTask: (task_id: number) => void
+	userRole: string
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({
@@ -27,11 +27,12 @@ const TaskCard: React.FC<TaskCardProps> = ({
 	title,
 	index,
 	deleteTask,
+	userRole,
 }) => {
 	const [name, setName] = useState(title)
 	const [isEditing, setIsEditing] = useState(false)
 	const [deleteTaskById] = useDeleteTaskMutation()
-  const [updateTask] = useUpdateTaskMutation()
+	const [updateTask] = useUpdateTaskMutation()
 
 	const debouncedUpdate = useRef(
 		debounce(async (taskId: number, newTitle: string) => {
@@ -54,7 +55,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
 	}
 
 	const handleDoubleClick = () => {
-		setIsEditing(true)
+		if (userRole === 'owner') {
+			setIsEditing(true)
+		}
 	}
 
 	const handleDeleteTask = () => {
@@ -113,21 +116,23 @@ const TaskCard: React.FC<TaskCardProps> = ({
 								>
 									{name}
 								</Typography>
-								<IconButton
-									aria-label='delete task'
-									onClick={handleDeleteTask}
-									size='small'
-									className='delete-button'
-									sx={{
-										visibility: 'hidden',
-										opacity: 0,
-										transition: 'opacity 0.3s ease, visibility 0.3s ease',
-										minWidth: 'auto',
-										padding: 0,
-									}}
-								>
-									<DeleteIcon fontSize='small' />
-								</IconButton>
+								{userRole === 'owner' && (
+									<IconButton
+										aria-label='delete task'
+										onClick={handleDeleteTask}
+										size='small'
+										className='delete-button'
+										sx={{
+											visibility: 'hidden',
+											opacity: 0,
+											transition: 'opacity 0.3s ease, visibility 0.3s ease',
+											minWidth: 'auto',
+											padding: 0,
+										}}
+									>
+										<DeleteIcon fontSize='small' />
+									</IconButton>
+								)}
 							</div>
 						)}
 						<Typography

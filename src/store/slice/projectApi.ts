@@ -32,6 +32,7 @@ interface TaskColumn {
 
 interface GetColumnsResponse {
 	success: boolean
+	role: string
 	columns: TaskColumn[]
 }
 

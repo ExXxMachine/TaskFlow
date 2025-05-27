@@ -11,7 +11,6 @@ const generateAccessToken = UserId => {
 }
 
 class AuthController {
-	// Регистрация пользователя
 	async registration(req, res) {
 		try {
 			const errors = validationResult(req)
@@ -48,7 +47,6 @@ class AuthController {
 				})
 			}
 
-			// Проверка уникальности userLogin и userEmail
 			const candidateLogin = await User.findByUserName(username)
 			if (candidateLogin) {
 				return res.status(400).json({
@@ -59,14 +57,12 @@ class AuthController {
 
 			const hashPassword = await bcrypt.hash(password, 7)
 
-			// Создаем пользователя
 			const newUser = await User.createUser({
 				username,
 				email,
 				password: hashPassword,
 			})
 
-			// Генерируем токен
 			const token = generateAccessToken(newUser.id)
 
 			return res.json({
@@ -82,7 +78,6 @@ class AuthController {
 		}
 	}
 
-	// Вход пользователя
 	async login(req, res) {
 		try {
 			const { username, password } = req.body
@@ -112,10 +107,8 @@ class AuthController {
 		}
 	}
 
-	// Получение данных пользователя по токен
 	async getUserByToken(req, res) {
 		const authHeader = req.headers.authorization
-		console.log('Req:', authHeader)
 		if (!authHeader)
 			return res.status(401).json({ message: 'Токен не предоставлен' })
 
@@ -125,9 +118,7 @@ class AuthController {
 
 		try {
 			const decoded = jwt.verify(token, secret)
-			console.log('Decoded:', decoded)
-			const user = await User.findById(decoded.id)
-			console.log('User from DB:', user)
+			const user = await User.findById(decoded.id)	
 			if (!user) {
 				return res.status(401).json({ message: 'Пользователь не найден' })
 			}

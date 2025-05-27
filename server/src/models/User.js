@@ -1,11 +1,21 @@
 const pool = require('../config/db') 
 
+async function getUserRole(project_id, user_id) {
+	const res = await pool.query(
+		`SELECT role FROM "AccessList" WHERE project_id = $1 AND user_id = $2`,
+		[project_id, user_id]
+	)
+	if (res.rowCount === 0) {
+		throw new Error('Пользователь не имеет доступа к проекту')
+	}
+	return res.rows[0].role.toLowerCase()
+}
+
 const findByUserName = async userName => {
 	try {
 		const res = await pool.query('SELECT * FROM "User" WHERE name = $1', [
 			userName,
 		])
-   console.log('findByUserName:', res.rows[0])
 
 		return res.rows[0]
 	} catch (e) {
@@ -47,4 +57,5 @@ module.exports = {
 	findByUserName,
 	findById,
 	createUser,
+	getUserRole,
 }

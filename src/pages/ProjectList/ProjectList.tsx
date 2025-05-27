@@ -16,6 +16,8 @@ import {
 	useGetProjectsByUserIdQuery,
 	useCreateProjectMutation,
 } from '../../store/slice/projectApi'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 interface Project {
 	project_id: number
@@ -45,6 +47,16 @@ const ProjectsList: React.FC = () => {
 	useEffect(() => {
 		refetch()
 	}, [location.pathname, refetch])
+
+	useEffect(() => {
+		if (location.state?.successMessage) {
+			toast.success(location.state.successMessage, {
+				position: 'bottom-right',
+			})
+			// Очистить состояние, чтобы тост не показывался при повторных рендерах
+			window.history.replaceState({}, document.title)
+		}
+	}, [location.state])
 
 	const handleAddProject = async () => {
 		try {
@@ -221,6 +233,7 @@ const ProjectsList: React.FC = () => {
 					</Grid>
 				</Grid>
 			</Container>
+			<ToastContainer />
 		</Box>
 	)
 }

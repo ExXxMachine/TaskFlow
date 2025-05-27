@@ -7,9 +7,7 @@ import {
 	useCreateTaskMutation,
 	useUpdateTaskColumnMutation,
 } from '../../store/slice/projectApi'
-import {
-	Droppable,
-} from 'react-beautiful-dnd'
+import { Droppable } from 'react-beautiful-dnd'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { debounce } from 'lodash'
 
@@ -29,6 +27,7 @@ interface TaskColumnProps {
 	addTask: (taskColumnName: string, taskName: string) => void
 	deleteTask: (taskId: number) => void
 	deleteColumn: (TaskColumnId: number) => void
+	userRole: string | null
 }
 
 const TaskColumn: React.FC<TaskColumnProps> = ({
@@ -38,6 +37,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 	addTask,
 	deleteTask,
 	deleteColumn,
+	userRole,
 }) => {
 	const [isEditing, setIsEditing] = useState(false)
 	const [nameColumn, setNameColumn] = useState(taskColumnName)
@@ -65,7 +65,9 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 	}
 
 	const handleDoubleClick = () => {
-		setIsEditing(true)
+		if (userRole === 'owner') {
+			setIsEditing(true)
+		}
 	}
 	const handleAddTask = async () => {
 		try {
@@ -118,15 +120,17 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 						fullWidth
 						sx={{ fontSize: '1rem', fontWeight: 500 }}
 					/>
-					<IconButton
-						aria-label='delete column'
-						onClick={handleDeleteColumn}
-						sx={{ ml: 1 }}
-						size='small'
-						className='delete-button'
-					>
-						<DeleteIcon fontSize='small' />
-					</IconButton>
+					{userRole === 'owner' && (
+						<IconButton
+							aria-label='delete column'
+							onClick={handleDeleteColumn}
+							sx={{ ml: 1 }}
+							size='small'
+							className='delete-button'
+						>
+							<DeleteIcon fontSize='small' />
+						</IconButton>
+					)}
 				</Box>
 			) : (
 				<Box
@@ -148,18 +152,20 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 					>
 						{nameColumn}
 					</Typography>
-					<IconButton
-						aria-label='delete column'
-						onClick={handleDeleteColumn}
-						size='small'
-						className='delete-button'
-						sx={{
-							visibility: 'hidden',
-							'&:hover': { visibility: 'visible' },
-						}}
-					>
-						<DeleteIcon fontSize='small' />
-					</IconButton>
+					{userRole === 'owner' && (
+						<IconButton
+							aria-label='delete column'
+							onClick={handleDeleteColumn}
+							size='small'
+							className='delete-button'
+							sx={{
+								visibility: 'hidden',
+								'&:hover': { visibility: 'visible' },
+							}}
+						>
+							<DeleteIcon fontSize='small' />
+						</IconButton>
+					)}
 				</Box>
 			)}
 
@@ -183,24 +189,26 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 								task_id={item.task_id}
 								title={item.title}
 								index={index}
+								userRole={userRole}
 							/>
 						))}
 						{provided.placeholder}
 					</Stack>
 				)}
 			</Droppable>
-
-			<IconButton
-				color='primary'
-				aria-label='add'
-				sx={{
-					marginTop: '15px',
-					borderRadius: '5px',
-				}}
-				onClick={handleAddTask}
-			>
-				<AddIcon />
-			</IconButton>
+			{userRole === 'owner' && (
+				<IconButton
+					color='primary'
+					aria-label='add'
+					sx={{
+						marginTop: '15px',
+						borderRadius: '5px',
+					}}
+					onClick={handleAddTask}
+				>
+					<AddIcon />
+				</IconButton>
+			)}
 		</Paper>
 	)
 }

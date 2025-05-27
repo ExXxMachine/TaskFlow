@@ -25,8 +25,6 @@ class projectController {
 				return res.status(401).json({ success: false, message: error.message })
 			}
 
-			console.log('userId:', userId)
-
 			const newProject = await Project.createProject({
 				projectName,
 				description,
@@ -65,7 +63,7 @@ class projectController {
 				return res.status(401).json({ success: false, message: error.message })
 			}
 
-			const projects = await Project.getProjectsByOwnerId(userId)
+			const projects = await Project.getProjectsByUserId(userId)
 
 			if (!projects) {
 				return res.status(500).json({
@@ -102,8 +100,15 @@ class projectController {
 			}
 
 			const project_id = req.params.id
-			console.log('project_id:', project_id)
-			const result = await Project.deleteProjectById(project_id)
+
+			const result = await Project.deleteProjectById(project_id, userId)
+
+			if (!result.success) {
+				return res
+					.status(403)
+					.json({ success: false, message: result.message || 'Нет доступа' })
+			}
+
 			if (!result) {
 				return res
 					.status(500)
@@ -132,8 +137,6 @@ class projectController {
 
 			const project_id = req.params.id
 			const { name, description } = req.body
-			console.log('params:', req.params	)
-			console.log('body:', req.body)
 
 			let userId
 			try {

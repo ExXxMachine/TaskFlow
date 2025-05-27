@@ -22,6 +22,11 @@ import {
 } from '../../store/slice/projectApi'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import { debounce } from 'lodash'
+import { ToastContainer, toast } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
+import { confirmAlert } from 'react-confirm-alert'
+import 'react-confirm-alert/src/react-confirm-alert.css'
+import './customConfirmAlert.css'
 
 interface Task {
 	task_id: number
@@ -62,6 +67,8 @@ const Project = () => {
 
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 	const open = Boolean(anchorEl)
+	const [userRole, setUserRole] = useState<string | null>(null)
+
 
 	const debouncedUpdate = useRef(
 		debounce(async fields => {
@@ -70,6 +77,12 @@ const Project = () => {
 				await updateProject({ project_id: id, ...fields }).unwrap()
 				console.log('Проект обновлен', fields)
 			} catch (error) {
+				toast.error(
+					<div>{`${error?.data?.message || error.message || error}`}</div>,
+					{
+						position: 'bottom-right',
+					}
+				)
 				console.error('Ошибка обновления проекта', error)
 			}
 		}, 2000) 
@@ -91,23 +104,53 @@ const Project = () => {
 	useEffect(() => {
 		if (data?.columns) {
 			setProjectData(data.columns)
-			console.log(projectData)
+			setUserRole(data.role) 
+			console.log('Роль пользователя в проекте:', data.role)
 		}
 	}, [data])
 
-	const handleDeleteProjectClick = async () => {
-		if (!id) return
-		try {
-			await deleteProject(id).unwrap()
-			handleMenuClose()
-			navigation('/projects')
-		} catch (error) {
-			console.error('Ошибка при удалении проекта:', error)
-		}
+	const handleDeleteProjectClick =  () => {
+		confirmAlert({
+			title: 'Подтверждение удаления',
+			message: 'Вы уверены, что хотите удалить этот проект?',
+			buttons: [
+				{
+					label: 'Да',
+					onClick: async () => {
+						if (!id) return
+						try {
+							await deleteProject(id).unwrap()
+							handleMenuClose()
+							navigation('/projects', {
+								state: { successMessage: 'Проект успешно удалён' },
+							})
+						} catch (error) {
+							toast.error(
+								<div>{`${
+									error?.data?.message || error.message || error
+								}`}</div>,
+								{
+									position: 'bottom-right',
+								}
+							)
+						}
+					},
+				},
+				{
+					label: 'Нет',
+					onClick: () => {},
+				},
+			],
+		})
+		
 	}
+	
 
 	const addTask = (taskColumnId: string, taskName: string) => {
+		console.log(taskColumnId)
+		console.log(taskName)
 		setProjectData(prevData => {
+			 console.log('prevData в addTask:', prevData)
 			const allTaskIds = prevData.flatMap(col =>
 				col.tasks.map(task => task.task_id)
 			)
@@ -123,6 +166,7 @@ const Project = () => {
 						executor_id: null,
 						owner_id: 0,
 					}
+					toast.success('Задача добавлена', { position: 'bottom-right' })
 					return {
 						...column,
 						tasks: [...column.tasks, newTask],
@@ -139,8 +183,16 @@ const Project = () => {
 			const response = await createColumn(id).unwrap()
 			const newColumn = response.taskColumn || response
 			setProjectData(prev => [...prev, { ...newColumn, tasks: [] }])
+			toast.success('Столбец создан', { position: 'bottom-right' })
 		} catch (error) {
-			console.error('Ошибка при создании столбца', error)
+			toast.error(
+				`Ошибка при создании столбца: ${
+					error?.data?.message || error.message || error
+				}`,
+				{
+					position: 'bottom-right',
+				}
+			)
 		}
 	}
 
@@ -204,20 +256,67 @@ const Project = () => {
 	
 
 	const deleteTask = (task_id: number) => {
-		setProjectData(prevData =>
-			prevData.map(column => ({
-				...column,
-				tasks: column.tasks.filter(task => task.task_id !== task_id),
-			}))
-		)
-	}
+		confirmAlert({
+			title: 'Подтверждение удаления',
+			message: 'Вы уверены, что хотите удалить эту задачу?',
+			buttons: [
+				{
+					label: 'Да',
+					onClick: async () => {
+						setProjectData(prevData =>
+							prevData.map(column => ({
+								...column,
+								tasks: column.tasks.filter(task => task.task_id !== task_id),
+							}))
+						)
+						toast.success('Задача удалена', { position: 'bottom-right' })
+					},
+				},
+				{
+					label: 'Нет',
+					onClick: () => {},
+				},
+			],
+		})
+		
+	}	
 
 	const deleteColumn = async (task_column_id: number) => {
-		await deleteTaskColumn(task_column_id).unwrap()
-		setProjectData(prevData => {
-			return prevData.filter(column => column.task_column_id !== task_column_id)
+		confirmAlert({
+			title: 'Подтверждение удаления',
+			message: 'Вы уверены, что хотите удалить этот столбец?',
+			buttons: [
+				{
+					label: 'Да',
+					onClick: async () => {
+						try {
+							await deleteTaskColumn(task_column_id).unwrap()
+							setProjectData(prevData =>
+								prevData.filter(
+									column => column.task_column_id !== task_column_id
+								)
+							)
+							toast.success('Столбец удалён', { position: 'bottom-right' })
+						} catch (error) {
+							toast.error(
+								`Ошибка при удалении столбца: ${
+									error?.data?.message || error.message || error
+								}`,
+								{
+									position: 'bottom-right',
+								}
+							)
+						}
+					},
+				},
+				{
+					label: 'Нет',
+					onClick: () => {},
+				},
+			],
 		})
 	}
+
 	useEffect(() => {
 		if (name.trim() !== '') {
 			debouncedUpdate({ name })
@@ -233,29 +332,32 @@ const Project = () => {
 			debouncedUpdate.cancel()
 		}
 	}, [debouncedUpdate])
+
 	return (
 		<DragDropContext onDragEnd={handleDragEnd}>
 			<Box sx={{ position: 'relative', pt: 4, pl: 5, color: '#fff' }}>
-				<IconButton
-					aria-label='more'
-					aria-controls={open ? 'project-menu' : undefined}
-					aria-haspopup='true'
-					aria-expanded={open ? 'true' : undefined}
-					onClick={handleMenuOpen}
-					sx={{
-						position: 'absolute',
-						top: 16,
-						right: 16,
-						color: '#fff',
-						zIndex: 10,
-					}}
-				>
-					<MoreVertIcon />
-				</IconButton>
-
+				{userRole === 'owner' && (
+					<IconButton
+						aria-label='more'
+						aria-controls={open ? 'project-menu' : undefined}
+						aria-haspopup='true'
+						aria-expanded={open ? 'true' : undefined}
+						onClick={handleMenuOpen}
+						sx={{
+							position: 'absolute',
+							top: 16,
+							right: 16,
+							color: '#fff',
+							zIndex: 10,
+						}}
+					>
+						<MoreVertIcon />
+					</IconButton>
+				)}
 				<InputBase
 					value={name}
-					onChange={e => setName(e.target.value)}
+					onChange={e => userRole === 'owner' && setName(e.target.value)}
+					readOnly={userRole !== 'owner'}
 					sx={{
 						fontSize: '2rem',
 						fontWeight: 'bold',
@@ -263,6 +365,8 @@ const Project = () => {
 						color: '#fff',
 						mb: 1,
 						borderBottom: '1px solid transparent',
+						opacity: userRole === 'owner' ? 1 : 0.7,
+						cursor: userRole === 'owner' ? 'text' : 'not-allowed',
 						'&:focus': {
 							borderBottom: '1px solid #fff',
 							outline: 'none',
@@ -271,10 +375,10 @@ const Project = () => {
 					placeholder='Введите название проекта'
 					inputProps={{ maxLength: 100 }}
 				/>
-
 				<TextareaAutosize
 					value={description}
-					onChange={e => setDescription(e.target.value)}
+					onChange={e => userRole === 'owner' && setDescription(e.target.value)}
+					readOnly={userRole !== 'owner'}
 					placeholder='Введите описание проекта'
 					style={{
 						width: '100%',
@@ -287,10 +391,11 @@ const Project = () => {
 						outline: 'none',
 						padding: 0,
 						marginTop: 8,
+						opacity: userRole === 'owner' ? 1 : 0.7,
+						cursor: userRole === 'owner' ? 'text' : 'not-allowed',
 					}}
 					maxLength={500}
 				/>
-
 				<Menu
 					id='project-menu'
 					anchorEl={anchorEl}
@@ -319,17 +424,21 @@ const Project = () => {
 						addTask={addTask}
 						deleteTask={deleteTask}
 						deleteColumn={deleteColumn}
+						userRole={userRole}
 					/>
 				))}
-				<IconButton
-					color='primary'
-					aria-label='add'
-					sx={{ borderRadius: '5px' }}
-					onClick={addColumn}
-				>
-					<AddIcon />
-				</IconButton>
+				{userRole === 'owner' && (
+					<IconButton
+						color='primary'
+						aria-label='add'
+						sx={{ borderRadius: '5px' }}
+						onClick={addColumn}
+					>
+						<AddIcon />
+					</IconButton>
+				)}
 			</div>
+			<ToastContainer />
 		</DragDropContext>
 	)
 }
