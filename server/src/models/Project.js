@@ -154,9 +154,36 @@ const updateProjectById = async (project_id, fieldsToUpdate, user_id) => {
 	}
 }
 
+const addUserToProject = async (projectId, userId) => {
+	try {
+		const check = await pool.query(
+			`SELECT 1 FROM "AccessList" WHERE project_id = $1 AND user_id = $2`,
+			[projectId, userId]
+		)
+
+		if (check.rowCount > 0) {
+			return { success: true, message: 'Пользователь уже в проекте' }
+		}
+
+		await pool.query(
+			`INSERT INTO "AccessList" (project_id, user_id, role) VALUES ($1, $2, $3)`,
+			[projectId, userId, 'executor']
+		)
+
+		return { success: true }
+	} catch (e) {
+		console.error('Ошибка обновления проекта:', e)
+		return {
+			success: false,
+			message: e.message || 'Ошибка при добавлении пользователя в проект',
+		}
+	}
+}
+
 module.exports = {
 	createProject,
 	getProjectsByUserId,
 	deleteProjectById,
 	updateProjectById,
+	addUserToProject,
 }

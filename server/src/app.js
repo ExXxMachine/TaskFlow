@@ -2,6 +2,7 @@ const express = require('express')
 const pool = require('./config/db')
 const authRouter = require('./routes/authRouter')
 const projectRouter = require('./routes/projectRouter')
+const inviteRouter = require('./routes/inviteRouter')
 
 const app = express()
 const cors = require('cors')
@@ -12,6 +13,7 @@ app.use(cors())
 
 app.use('/auth', authRouter)
 app.use('/projects', projectRouter)
+app.use('/invite', inviteRouter)
 
 app.get('/users', async (req, res) => {
 	try {
