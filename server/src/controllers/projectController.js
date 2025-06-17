@@ -81,6 +81,44 @@ class projectController {
 			return res.status(500).json({ success: false, message: 'Ошибка сервера' })
 		}
 	}
+
+	async getProjectById(req, res) {
+		try {
+			const errors = validationResult(req)
+			if (!errors.isEmpty()) {
+				return res.status(400).json({
+					success: false,
+					message: 'Ошибка при получении проекта',
+					errors: errors.array(),
+				})
+			}
+
+			let userId
+			try {
+				userId = await validationToken(req)
+			} catch (error) {
+				return res.status(401).json({ success: false, message: error.message })
+			}
+			const project_id = req.params.id
+			const project = await Project.getProjectById(project_id, userId)
+
+			if (!project) {
+				return res.status(500).json({
+					success: false,
+					message: 'Ошибка при получении проекта',
+				})
+			}
+
+			return res.json({
+				success: true,
+				project,
+			})
+		} catch (error) {
+			console.error(error)
+			return res.status(500).json({ success: false, message: 'Ошибка сервера' })
+		}
+	}
+
 	async deleteProject(req, res) {
 		try {
 			const errors = validationResult(req)
@@ -145,10 +183,14 @@ class projectController {
 				return res.status(401).json({ success: false, message: error.message })
 			}
 
-			const updatedProject = await Project.updateProjectById(project_id, {
-				name,
-				description,
-			})
+			const updatedProject = await Project.updateProjectById(
+				project_id,
+				{
+					name,
+					description,
+				},
+				userId
+			)
 
 			if (!updatedProject) {
 				return res

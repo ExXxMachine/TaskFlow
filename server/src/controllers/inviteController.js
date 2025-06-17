@@ -38,7 +38,7 @@ class inviteController {
 
 			const project_id = req.params.id
 			const token = generateInviteToken(project_id)
-			const inviteLink = `http://localhost:3000/invite/${token}`
+			const inviteLink = `http://localhost:5173/invite/${token}`
 
 			if (!inviteLink) {
 				return res
@@ -98,6 +98,7 @@ class inviteController {
 				return res.json({
 					success: true,
 					message: 'Пользователь добавлен в проект',
+					project_id: projectId,
 				})
 			} else {
 				return res.status(400).json({ success: false, message: result.message })

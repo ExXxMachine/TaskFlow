@@ -127,11 +127,10 @@ const ProjectsList: React.FC = () => {
 				>
 					Ваши проекты
 				</Typography>
-				<Grid container spacing={4}>
+				<Grid container spacing={4} justifyContent='center'>
 					{projectsList.map(({ project_id, name, description }) => (
 						<Link
 							to={`/project/${project_id}`}
-							state={{ description: description, name: name }}
 							style={{ textDecoration: 'none' }}
 						>
 							<Grid item xs={12} sm={6} md={4} key={project_id}>
@@ -141,6 +140,7 @@ const ProjectsList: React.FC = () => {
 										backgroundColor: '#1976d2',
 										color: '#fff',
 										minWidth: '300px',
+										minHeight: '170px',
 										display: 'flex',
 										flexDirection: 'column',
 										justifyContent: 'space-between',

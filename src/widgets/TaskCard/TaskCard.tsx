@@ -19,7 +19,7 @@ interface TaskCardProps {
 	title: string
 	index: number
 	deleteTask: (task_id: number) => void
-	userRole: string
+	userRole: string | null
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({

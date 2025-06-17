@@ -6,6 +6,7 @@ const taskController = require('../controllers/taskController')
 
 router.post('/', controller.createProject)
 router.get('/', controller.getProjectList)
+router.get('/:id', controller.getProjectById)
 router.delete('/:id', controller.deleteProject)
 router.patch('/:id', controller.updateProject)
 router.get('/columns/:id', taskColumnController.getTaskColumnList)

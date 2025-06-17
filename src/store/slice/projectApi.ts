@@ -18,12 +18,17 @@ interface Project {
 	owner_id: number
 }
 
+interface GetProjectResponse {
+	success: boolean
+	project: Project
+}
+
 interface GetProjectsResponse {
 	success: boolean
 	projects: Project[]
 }
 
-interface TaskColumn {
+export interface TaskColumnInt {
 	task_column_id: number
 	title: string
 	project_id: number
@@ -33,19 +38,28 @@ interface TaskColumn {
 interface GetColumnsResponse {
 	success: boolean
 	role: string
-	columns: TaskColumn[]
+	columns: TaskColumnInt[]
 }
 
 interface Task {
+	task_id: number
+	task_column_id: number
+	title: string
+	priority: number
+	executor_id: number | null
+	owner_id: number
+}
+
+interface GetTaskResponse {
 	success: boolean
 	message: string
-	task: {
-		id: number
-		title: string
-		taskColumnId: number
-		description: string
-		priority: number
-	}
+	task: Task
+}
+
+interface Invite {
+	success: boolean
+	message: string
+	link: string
 }
 
 export const projectApi = createApi({
@@ -92,7 +106,7 @@ export const projectApi = createApi({
 				body: patch,
 			}),
 		}),
-		createTaskColumn: builder.mutation<TaskColumn, string>({
+		createTaskColumn: builder.mutation<TaskColumnInt, string>({
 			query: project_id => ({
 				url: `/columns/${project_id}`,
 				method: 'POST',
@@ -130,11 +144,11 @@ export const projectApi = createApi({
 					Authorization: `Bearer ${getCookie('token')}`,
 				},
 				body: {
-					title: title
+					title: title,
 				},
 			}),
 		}),
-		createTask: builder.mutation<Task, string>({
+		createTask: builder.mutation<GetTaskResponse, string>({
 			query: task_column_id => ({
 				url: `/tasks/${task_column_id}`,
 				method: 'POST',
@@ -164,6 +178,15 @@ export const projectApi = createApi({
 				body: patch,
 			}),
 		}),
+		getProjectById: builder.query<GetProjectResponse, string | undefined>({
+			query: project_id => ({
+				url: `/${project_id}`,
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${getCookie('token')}`,
+				},
+			}),
+		}),
 	}),
 })
 
@@ -179,4 +202,5 @@ export const {
 	useCreateTaskMutation,
 	useDeleteTaskMutation,
 	useUpdateTaskMutation,
+	useGetProjectByIdQuery,
 } = projectApi

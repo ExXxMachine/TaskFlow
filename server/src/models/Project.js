@@ -109,12 +109,13 @@ const deleteProjectById = async (project_id, user_id) => {
 }
 
 const updateProjectById = async (project_id, fieldsToUpdate, user_id) => {
+
 	try {
 		const role = await User.getUserRole(project_id, user_id)
 		if (!role) {
 			return { success: false, message: 'Нет доступа к проекту' }
 		}
-		if (role !== 'owner' && role !== 'creator') {
+		if (role !== 'owner') {
 			return {
 				success: false,
 				message: 'Недостаточно прав для обновления проекта',
@@ -134,7 +135,7 @@ const updateProjectById = async (project_id, fieldsToUpdate, user_id) => {
 		}
 
 		if (setClauses.length === 0) {
-			return { success: false, message: 'No fields to update' }
+			return { success: false, message: 'Нет полей для обновления' }
 		}
 
 		values.push(project_id)
@@ -180,10 +181,33 @@ const addUserToProject = async (projectId, userId) => {
 	}
 }
 
+const getProjectById = async (project_id, userId) => {
+	try {
+		const res = await pool.query(
+			`
+      SELECT p.*
+      FROM "Project" p
+      JOIN "AccessList" a ON p.project_id = a.project_id
+      WHERE p.project_id = $1 AND a.user_id = $2
+      `,
+			[project_id, userId]
+		)
+		if (res.rowCount === 0) {
+			return null 
+		}
+		return res.rows[0]
+	} catch (e) {
+		console.error('Ошибка получения проекта по id:', e)
+		return null
+	}
+}
+
+
 module.exports = {
 	createProject,
 	getProjectsByUserId,
 	deleteProjectById,
 	updateProjectById,
 	addUserToProject,
+	getProjectById,
 }

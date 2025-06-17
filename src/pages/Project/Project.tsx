@@ -11,6 +11,9 @@ import {
 	IconButton,
 	Menu,
 	MenuItem,
+	Typography,
+	Modal,
+	Button,
 } from '@mui/material'
 import {
 	useGetTaskColumnByProjectIdQuery,
@@ -19,7 +22,9 @@ import {
 	useDeleteProjectMutation,
 	useUpdateProjectMutation,
 	useUpdateTaskMutation,
+	useGetProjectByIdQuery,
 } from '../../store/slice/projectApi'
+import { useInviteUserInProjectQuery } from '../../store/slice/inviteApi'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import { debounce } from 'lodash'
 import { ToastContainer, toast } from 'react-toastify'
@@ -27,6 +32,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import { confirmAlert } from 'react-confirm-alert'
 import 'react-confirm-alert/src/react-confirm-alert.css'
 import './customConfirmAlert.css'
+import { TaskColumnInt } from '../../store/slice/projectApi'
 
 interface Task {
 	task_id: number
@@ -37,28 +43,37 @@ interface Task {
 	owner_id: number
 }
 
-interface TaskColumnType {
-	task_column_id: number
-	title: string
-	project_id: number
-	tasks: Task[]
+const styleModal = {
+	position: 'absolute' as const,
+	top: '50%',
+	left: '50%',
+	transform: 'translate(-50%, -50%)',
+	bgcolor: 'background.paper',
+	borderRadius: 1,
+	boxShadow: 24,
+	p: 4,
+	minWidth: 300,
+	textAlign: 'center',
 }
 
 const Project = () => {
 	const location = useLocation()
 	const { id } = useParams()
 	const skip = !id
+	const { data: dataProject, refetch } = useGetProjectByIdQuery(id, {
+		refetchOnMountOrArgChange: true,
+	})
 	const { data, error, isLoading } = useGetTaskColumnByProjectIdQuery(id!, {
 		skip,
 	})
 
 	const navigation = useNavigate()
-	const { name: initialName, description: initialDescription } =
-		location.state || {}
-	const [name, setName] = useState(initialName || '')
-	const [description, setDescription] = useState(initialDescription || '')
+	const [name, setName] = useState(dataProject?.project.name || '')
+	const [description, setDescription] = useState(
+		dataProject?.project.description || ''
+	)
 	const [updateProject] = useUpdateProjectMutation()
-	const [projectData, setProjectData] = useState<TaskColumnType[]>([])
+	const [projectData, setProjectData] = useState<TaskColumnInt[]>([])
 	const [deleteProject] = useDeleteProjectMutation()
 	const [updateTask] = useUpdateTaskMutation()
 
@@ -68,7 +83,10 @@ const Project = () => {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
 	const open = Boolean(anchorEl)
 	const [userRole, setUserRole] = useState<string | null>(null)
-
+	const [openInviteModal, setOpenInviteModal] = useState(false)
+	const { data: inviteData } = useInviteUserInProjectQuery(id, {
+		refetchOnMountOrArgChange: true,
+	})
 
 	const debouncedUpdate = useRef(
 		debounce(async fields => {
@@ -76,17 +94,39 @@ const Project = () => {
 			try {
 				await updateProject({ project_id: id, ...fields }).unwrap()
 				console.log('Проект обновлен', fields)
-			} catch (error) {
-				toast.error(
-					<div>{`${error?.data?.message || error.message || error}`}</div>,
-					{
+			} catch (error: unknown) {
+				if (
+					typeof error === 'object' &&
+					error !== null &&
+					'data' in error &&
+					typeof (error as any).data === 'object' &&
+					(error as any).data !== null &&
+					'message' in (error as any).data
+				) {
+					toast.error(<div>{(error as any).data.message}</div>, {
 						position: 'bottom-right',
-					}
-				)
-				console.error('Ошибка обновления проекта', error)
+					})
+				} else if (error instanceof Error) {
+					toast.error(<div>{error.message}</div>, { position: 'bottom-right' })
+				} else {
+					toast.error(<div>Неизвестная ошибка</div>, {
+						position: 'bottom-right',
+					})
+				}
 			}
-		}, 2000) 
+		}, 2000)
 	).current
+
+	useEffect(() => {
+		refetch()
+	}, [id, refetch])
+
+	useEffect(() => {
+		if (dataProject) {
+			setName(dataProject.project.name)
+			setDescription(dataProject.project.description)
+		}
+	}, [dataProject])
 
 	const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
 		setAnchorEl(event.currentTarget)
@@ -97,19 +137,41 @@ const Project = () => {
 	}
 
 	const handleInviteClick = () => {
-		alert('Пригласить пользователя')
+		setOpenInviteModal(true)
 		handleMenuClose()
+	}
+
+	const handleInviteModalClose = () => {
+		setOpenInviteModal(false)
+	}
+
+	const handleCopyInvite = async () => {
+		console.log(inviteData?.link)
+		if (!inviteData?.link) {
+			toast.error('Ссылка приглашения недоступна', { position: 'bottom-right' })
+			return
+		}
+
+		try {
+			await navigator.clipboard.writeText(inviteData.link)
+			toast.success('Ссылка-приглашение скопирована!', {
+				position: 'bottom-right',
+			})
+		} catch {
+			toast.error('Ошибка при копировании текста', { position: 'bottom-right' })
+		}
 	}
 
 	useEffect(() => {
 		if (data?.columns) {
+			console.log('данные проекта:', data)
 			setProjectData(data.columns)
-			setUserRole(data.role) 
+			setUserRole(data.role)
 			console.log('Роль пользователя в проекте:', data.role)
 		}
 	}, [data])
 
-	const handleDeleteProjectClick =  () => {
+	const handleDeleteProjectClick = () => {
 		confirmAlert({
 			title: 'Подтверждение удаления',
 			message: 'Вы уверены, что хотите удалить этот проект?',
@@ -124,15 +186,27 @@ const Project = () => {
 							navigation('/projects', {
 								state: { successMessage: 'Проект успешно удалён' },
 							})
-						} catch (error) {
-							toast.error(
-								<div>{`${
-									error?.data?.message || error.message || error
-								}`}</div>,
-								{
+						} catch (error: unknown) {
+							if (
+								typeof error === 'object' &&
+								error !== null &&
+								'data' in error &&
+								typeof (error as any).data === 'object' &&
+								(error as any).data !== null &&
+								'message' in (error as any).data
+							) {
+								toast.error(<div>{(error as any).data.message}</div>, {
 									position: 'bottom-right',
-								}
-							)
+								})
+							} else if (error instanceof Error) {
+								toast.error(<div>{error.message}</div>, {
+									position: 'bottom-right',
+								})
+							} else {
+								toast.error(<div>Неизвестная ошибка</div>, {
+									position: 'bottom-right',
+								})
+							}
 						}
 					},
 				},
@@ -142,15 +216,13 @@ const Project = () => {
 				},
 			],
 		})
-		
 	}
-	
 
 	const addTask = (taskColumnId: string, taskName: string) => {
 		console.log(taskColumnId)
 		console.log(taskName)
 		setProjectData(prevData => {
-			 console.log('prevData в addTask:', prevData)
+			console.log('prevData в addTask:', prevData)
 			const allTaskIds = prevData.flatMap(col =>
 				col.tasks.map(task => task.task_id)
 			)
@@ -181,18 +253,26 @@ const Project = () => {
 		try {
 			if (!id) return
 			const response = await createColumn(id).unwrap()
-			const newColumn = response.taskColumn || response
+			const newColumn = response
 			setProjectData(prev => [...prev, { ...newColumn, tasks: [] }])
 			toast.success('Столбец создан', { position: 'bottom-right' })
-		} catch (error) {
-			toast.error(
-				`Ошибка при создании столбца: ${
-					error?.data?.message || error.message || error
-				}`,
-				{
+		} catch (error: unknown) {
+			if (
+				typeof error === 'object' &&
+				error !== null &&
+				'data' in error &&
+				typeof (error as any).data === 'object' &&
+				(error as any).data !== null &&
+				'message' in (error as any).data
+			) {
+				toast.error(<div>{(error as any).data.message}</div>, {
 					position: 'bottom-right',
-				}
-			)
+				})
+			} else if (error instanceof Error) {
+				toast.error(<div>{error.message}</div>, { position: 'bottom-right' })
+			} else {
+				toast.error(<div>Неизвестная ошибка</div>, { position: 'bottom-right' })
+			}
 		}
 	}
 
@@ -253,7 +333,6 @@ const Project = () => {
 			return newData
 		})
 	}
-	
 
 	const deleteTask = (task_id: number) => {
 		confirmAlert({
@@ -278,8 +357,7 @@ const Project = () => {
 				},
 			],
 		})
-		
-	}	
+	}
 
 	const deleteColumn = async (task_column_id: number) => {
 		confirmAlert({
@@ -297,15 +375,27 @@ const Project = () => {
 								)
 							)
 							toast.success('Столбец удалён', { position: 'bottom-right' })
-						} catch (error) {
-							toast.error(
-								`Ошибка при удалении столбца: ${
-									error?.data?.message || error.message || error
-								}`,
-								{
+						} catch (error: unknown) {
+							if (
+								typeof error === 'object' &&
+								error !== null &&
+								'data' in error &&
+								typeof (error as any).data === 'object' &&
+								(error as any).data !== null &&
+								'message' in (error as any).data
+							) {
+								toast.error(<div>{(error as any).data.message}</div>, {
 									position: 'bottom-right',
-								}
-							)
+								})
+							} else if (error instanceof Error) {
+								toast.error(<div>{error.message}</div>, {
+									position: 'bottom-right',
+								})
+							} else {
+								toast.error(<div>Неизвестная ошибка</div>, {
+									position: 'bottom-right',
+								})
+							}
 						}
 					},
 				},
@@ -414,6 +504,33 @@ const Project = () => {
 					<MenuItem onClick={handleDeleteProjectClick}>Удалить проект</MenuItem>
 				</Menu>
 			</Box>
+			<Modal
+				open={openInviteModal}
+				onClose={handleInviteModalClose}
+				aria-labelledby='invite-modal-title'
+				aria-describedby='invite-modal-description'
+			>
+				<Box sx={styleModal}>
+					<Typography
+						id='invite-modal-title'
+						variant='h6'
+						component='h2'
+						gutterBottom
+					>
+						Пригласить пользователя
+					</Typography>
+					<Typography id='invite-modal-description' sx={{ mb: 2 }}>
+						Нажмите кнопку ниже, чтобы скопировать ссылку приглашения
+					</Typography>
+					<Button
+						variant='contained'
+						onClick={handleCopyInvite}
+						disabled={!inviteData?.link}
+					>
+						Скопировать приглашение
+					</Button>
+				</Box>
+			</Modal>
 			<div className={classesProject.projectColumnListBlock}>
 				{projectData.map(item => (
 					<TaskColumn
