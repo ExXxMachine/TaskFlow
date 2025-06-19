@@ -15,6 +15,7 @@ interface TaskCardProps {
 	task_id: number
 	task_column_id: number
 	title: string
+	task_description:string
 	priority: number
 	executor_id: number | null
 	owner_id: number
@@ -28,6 +29,7 @@ interface TaskColumnProps {
 	deleteTask: (taskId: number) => void
 	deleteColumn: (TaskColumnId: number) => void
 	userRole: string | null
+	onTaskClick: (task: TaskCardProps) => void
 }
 
 const TaskColumn: React.FC<TaskColumnProps> = ({
@@ -38,10 +40,11 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 	deleteTask,
 	deleteColumn,
 	userRole,
+	onTaskClick
 }) => {
 	const [isEditing, setIsEditing] = useState(false)
 	const [nameColumn, setNameColumn] = useState(taskColumnName)
-	const [createTask, { isLoading }] = useCreateTaskMutation()
+	const [createTask] = useCreateTaskMutation()
 	const [updateTaskColumn] = useUpdateTaskColumnMutation()
 
 	const debouncedUpdate = useRef(
@@ -170,7 +173,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 			)}
 
 			<Droppable droppableId={`${taskColumnId}`}>
-				{(provided, snapshot) => (
+				{(provided) => (
 					<Stack
 						spacing={2}
 						sx={{
@@ -190,6 +193,10 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 								title={item.title}
 								index={index}
 								userRole={userRole}
+								onClick={() => {
+									console.log('Клик по задаче:', item)
+									onTaskClick(item)
+								}}
 							/>
 						))}
 						{provided.placeholder}

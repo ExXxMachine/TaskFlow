@@ -18,9 +18,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ isLoginMode }) => {
 	const [confirmPassword, setConfirmPassword] = useState('')
 	const [error, setError] = useState('')
 
-	const [loginMutation, { isLoading: isLoggingIn, error: loginError }] =
+	const [loginMutation, { isLoading: isLoggingIn }] =
 		useLoginMutation()
-	const [registerMutation, { isLoading: isRegistering, error: registerError }] =
+	const [registerMutation, { isLoading: isRegistering}] =
 		useRegisterMutation()
 
 	const toggleMode = () => {

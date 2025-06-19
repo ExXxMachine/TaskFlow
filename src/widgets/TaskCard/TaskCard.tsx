@@ -20,6 +20,7 @@ interface TaskCardProps {
 	index: number
 	deleteTask: (task_id: number) => void
 	userRole: string | null
+	onClick?: () => void
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({
@@ -28,6 +29,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
 	index,
 	deleteTask,
 	userRole,
+	onClick
 }) => {
 	const [name, setName] = useState(title)
 	const [isEditing, setIsEditing] = useState(false)
@@ -75,6 +77,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
 		<Draggable draggableId={task_id.toString()} index={index}>
 			{provided => (
 				<Card
+					onClick={onClick}
 					ref={provided.innerRef}
 					{...provided.draggableProps}
 					{...provided.dragHandleProps}

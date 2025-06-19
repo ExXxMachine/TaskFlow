@@ -30,11 +30,11 @@ const ProjectsList: React.FC = () => {
 	const navigate = useNavigate()
 	const location = useLocation()
 
-	const { data, error, isLoading, refetch } = useGetProjectsByUserIdQuery()
+	const { data, error, refetch } = useGetProjectsByUserIdQuery()
 	const [projectsList, setProjectsList] = useState<Project[]>([])
 	const [createProject] = useCreateProjectMutation()
 
-	const [isCreating, setIsCreating] = useState(false)
+	const [isCreating] = useState(false)
 
 	useEffect(() => {
 		if (data?.projects) {
@@ -53,7 +53,6 @@ const ProjectsList: React.FC = () => {
 			toast.success(location.state.successMessage, {
 				position: 'bottom-right',
 			})
-			// Очистить состояние, чтобы тост не показывался при повторных рендерах
 			window.history.replaceState({}, document.title)
 		}
 	}, [location.state])

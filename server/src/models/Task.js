@@ -17,7 +17,7 @@ const createTask = async ({ taskColumnId, userId }) => {
 		}
 
 		const res = await pool.query(
-			`INSERT INTO "Task" (task_column_id, title, description, owner_id, priority)
+			`INSERT INTO "Task" (task_column_id, title, task_description, owner_id, priority)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
 			[taskColumnId, 'Новое задание', 'Описание', userId, 0]

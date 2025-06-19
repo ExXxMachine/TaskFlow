@@ -97,7 +97,7 @@ class taskController {
 			}
 
 			const taskId = req.params.id
-			const { title, description, priority, executor_id, task_column_id } =
+			const { title, task_description, priority, executor_id, task_column_id } =
 				req.body
 			let userId
 			try {
@@ -110,7 +110,7 @@ class taskController {
 				taskId,
 				{
 					title,
-					description,
+					task_description,
 					priority,
 					executor_id,
 					task_column_id,
@@ -131,7 +131,7 @@ class taskController {
 					id: updatedTask.task_id,
 					title: updatedTask.title,
 					taskColumnId: updatedTask.task_column_id,
-					description: updatedTask.description,
+					title_description: updatedTask.title_description,
 					priority: updatedTask.priority,
 					executor_id: updatedTask.executor_id,
 				},

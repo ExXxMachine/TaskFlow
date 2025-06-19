@@ -3,7 +3,7 @@ import { TaskColumn } from '../../widgets/TaskColumn/TaskColumn'
 import classesProject from './Project.module.css'
 import AddIcon from '@mui/icons-material/Add'
 import { DragDropContext, DropResult } from 'react-beautiful-dnd'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
 	Box,
 	TextareaAutosize,
@@ -14,7 +14,9 @@ import {
 	Typography,
 	Modal,
 	Button,
+	TextField,
 } from '@mui/material'
+import CloseIcon from '@mui/icons-material/Close'
 import {
 	useGetTaskColumnByProjectIdQuery,
 	useCreateTaskColumnMutation,
@@ -33,6 +35,7 @@ import { confirmAlert } from 'react-confirm-alert'
 import 'react-confirm-alert/src/react-confirm-alert.css'
 import './customConfirmAlert.css'
 import { TaskColumnInt } from '../../store/slice/projectApi'
+import HalfScreenDrawer from '../../widgets/HalfScreenDrawer/HalfScreenDrawer'
 
 interface Task {
 	task_id: number
@@ -41,6 +44,7 @@ interface Task {
 	priority: number
 	executor_id: number | null
 	owner_id: number
+	task_description: string
 }
 
 const styleModal = {
@@ -53,17 +57,18 @@ const styleModal = {
 	boxShadow: 24,
 	p: 4,
 	minWidth: 300,
-	textAlign: 'center',
+	maxWidth: 400,
+	maxHeight: '80vh',
+	overflowY: 'auto',
 }
 
 const Project = () => {
-	const location = useLocation()
 	const { id } = useParams()
 	const skip = !id
 	const { data: dataProject, refetch } = useGetProjectByIdQuery(id, {
 		refetchOnMountOrArgChange: true,
 	})
-	const { data, error, isLoading } = useGetTaskColumnByProjectIdQuery(id!, {
+	const { data } = useGetTaskColumnByProjectIdQuery(id!, {
 		skip,
 	})
 
@@ -87,6 +92,54 @@ const Project = () => {
 	const { data: inviteData } = useInviteUserInProjectQuery(id, {
 		refetchOnMountOrArgChange: true,
 	})
+
+	const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+	const [openTaskModal, setOpenTaskModal] = useState(false)
+	const [title, setTitle] = useState(selectedTask?.title)
+	const [taskDesc, setTaskDesc] = useState(selectedTask?.task_description)
+
+	const handleTaskClick = (task: Task) => {
+		setSelectedTask(task)
+		setOpenTaskModal(true)
+		setTitle(task.title)
+		setTaskDesc(task.task_description)
+	}
+
+	const handleTaskModalClose = () => {
+		setOpenTaskModal(false)
+		setSelectedTask(null)
+	}
+	const debouncedUpdateTask = useRef(
+		debounce(
+			async (
+				taskId: number,
+				updates: { title?: string; task_description?: string }
+			) => {
+				try {
+					await updateTask({ task_id: taskId, ...updates }).unwrap()
+				} catch (e) {
+					console.error('Ошибка при обновлении задачи', e)
+				}
+			},
+			2000
+		)
+	).current
+
+	const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const newValue = e.target.value
+		setTitle(newValue)
+		if (selectedTask?.task_id !== undefined) {
+			debouncedUpdateTask(selectedTask.task_id, { title: newValue })
+		}
+	}
+
+	const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const newValue = e.target.value
+		setTaskDesc(newValue)
+		if (selectedTask?.task_id !== undefined) {
+			debouncedUpdateTask(selectedTask.task_id, { task_description: newValue })
+		}
+	}
 
 	const debouncedUpdate = useRef(
 		debounce(async fields => {
@@ -237,6 +290,7 @@ const Project = () => {
 						priority: 0,
 						executor_id: null,
 						owner_id: 0,
+						task_description: 'Описания нет',
 					}
 					toast.success('Задача добавлена', { position: 'bottom-right' })
 					return {
@@ -248,6 +302,7 @@ const Project = () => {
 			})
 		})
 	}
+
 
 	const addColumn = async () => {
 		try {
@@ -423,6 +478,12 @@ const Project = () => {
 		}
 	}, [debouncedUpdate])
 
+	useEffect(() => {
+		return () => {
+			debouncedUpdateTask.cancel()
+		}
+	}, [debouncedUpdateTask])
+
 	return (
 		<DragDropContext onDragEnd={handleDragEnd}>
 			<Box sx={{ position: 'relative', pt: 4, pl: 5, color: '#fff' }}>
@@ -534,7 +595,7 @@ const Project = () => {
 			<div className={classesProject.projectColumnListBlock}>
 				{projectData.map(item => (
 					<TaskColumn
-						key={item.title}
+						key={item.task_column_id}
 						taskColumnId={item.task_column_id}
 						taskColumnName={item.title}
 						taskList={item.tasks}
@@ -542,6 +603,7 @@ const Project = () => {
 						deleteTask={deleteTask}
 						deleteColumn={deleteColumn}
 						userRole={userRole}
+						onTaskClick={handleTaskClick}
 					/>
 				))}
 				{userRole === 'owner' && (
@@ -555,6 +617,31 @@ const Project = () => {
 					</IconButton>
 				)}
 			</div>
+			<HalfScreenDrawer open={openTaskModal} onClose={handleTaskModalClose}>
+				<IconButton
+					onClick={handleTaskModalClose}
+					sx={{ position: 'absolute', top: 8, right: 8 }}
+				>
+					<CloseIcon />
+				</IconButton>
+				<InputBase
+					value={title}
+					onChange={handleTitleChange}
+					autoFocus
+					sx={{ width: '90%', fontSize: '30px' }}
+					disabled={!(userRole === 'owner')}
+				/>
+				<TextField
+					label={taskDesc?.trim() && taskDesc !== '' ? '' : 'Описание'}
+					multiline
+					disabled={!(userRole === 'owner')}
+					variant='outlined'
+					value={taskDesc}
+					onChange={handleDescriptionChange}
+					autoFocus
+					sx={{ width: '90%', marginTop: '20px' }}
+				/>
+			</HalfScreenDrawer>
 			<ToastContainer />
 		</DragDropContext>
 	)

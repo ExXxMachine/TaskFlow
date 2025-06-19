@@ -2,9 +2,6 @@ const pool = require('../config/db')
 const User = require('./User')
 
 const createTaskColumn = async ({ title, project_id, userId }) => {
-	console.log('title', title)
-	console.log('project_id', project_id)
-	console.log('userId', userId)
 	try {
 		const role = await User.getUserRole(project_id, userId)
 		if (role !== 'owner') {
@@ -27,10 +24,7 @@ const createTaskColumn = async ({ title, project_id, userId }) => {
 const getTaskColumnByProjectId = async (project_id, user_id) => {
 	try {
 		// Получаем роль 
-		console.log('project_id', project_id)
-		console.log('user_id', user_id)
 		const role = await User.getUserRole(project_id, user_id)
-		console.log('role', role)
 		// Получаем колонки с задачами
 		const res = await pool.query(
 			`SELECT
@@ -43,6 +37,7 @@ const getTaskColumnByProjectId = async (project_id, user_id) => {
               'task_id', t.task_id,
               'task_column_id', t.task_column_id,
               'title', t.title,
+							'task_description', t.task_description,
               'priority', t.priority,
               'executor_id', t.executor_id,
               'owner_id', t.owner_id
@@ -59,7 +54,7 @@ const getTaskColumnByProjectId = async (project_id, user_id) => {
 
 		return {
 			success: true,
-			role, // роль пользователя в проекте
+			role, 
 			columns: res.rows,
 		}
 	} catch (e) {
@@ -70,7 +65,6 @@ const getTaskColumnByProjectId = async (project_id, user_id) => {
 
 const deleteTaskColumnById = async (task_column_id, user_id) => {
 	try {
-		// Получаем project_id для столбца
 		const res = await pool.query(
 			`SELECT project_id FROM "TaskColumn" WHERE task_column_id = $1`,
 			[task_column_id]
@@ -102,7 +96,6 @@ const deleteTaskColumnById = async (task_column_id, user_id) => {
 
 const updateTaskColumnById = async (task_column_id, title, user_id) => {
 	try {
-		// Получаем project_id для столбца
 		const res = await pool.query(
 			`SELECT project_id FROM "TaskColumn" WHERE task_column_id = $1`,
 			[task_column_id]

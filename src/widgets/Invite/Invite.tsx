@@ -5,7 +5,7 @@ import { toast } from 'react-toastify'
 
 const InvitePage = () => {
 	const { token } = useParams<{ token: string }>()
-	const [acceptInvite, { data, error, isLoading }] = useAcceptInviteMutation()
+	const [acceptInvite] = useAcceptInviteMutation()
 
 	useEffect(() => {
 		if (!token) return

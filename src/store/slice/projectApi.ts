@@ -47,6 +47,7 @@ interface Task {
 	title: string
 	priority: number
 	executor_id: number | null
+	task_description:string
 	owner_id: number
 }
 
@@ -56,11 +57,6 @@ interface GetTaskResponse {
 	task: Task
 }
 
-interface Invite {
-	success: boolean
-	message: string
-	link: string
-}
 
 export const projectApi = createApi({
 	reducerPath: 'projectApi',
