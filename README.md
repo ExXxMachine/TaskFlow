@@ -16,7 +16,7 @@ TaskFlow — это веб-приложение для удобного упра
 - React, TypeScript
 - Redux Toolkit Query (RTK Query)
 - Material-UI (MUI)
-- Node.js и Express (backend, если есть)
+- Node.js и Express
 - Docker (для контейнеризации)
 - CI/CD (GitLab CI или другой)
 
